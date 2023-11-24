@@ -1,3 +1,6 @@
+using System.Collections;
+using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 #if ENABLE_INPUT_SYSTEM 
 using UnityEngine.InputSystem;
@@ -10,7 +13,11 @@ namespace GladiatorSurvival
 #endif
     public class PlayerController : MonoBehaviour
     {
+        public enum State { Idle, Walk, Splint, Air, Roll, Attack};
+
         [Header("Player")]
+
+        public State playerState = State.Idle;
         [Tooltip("캐릭터의 이동 속도 (m/s)")] 
         public float MoveSpeed = 2.0f;
 
@@ -55,6 +62,17 @@ namespace GladiatorSurvival
         [Tooltip("캐릭터가 바닥으로 사용하는 레이어")]
         public LayerMask GroundLayers;
 
+        [Header("Roll")]
+        public float rollDistance;
+        public float rollSpeed;
+        public bool isRoll = false;
+        private bool isJump = false;
+        private IEnumerator rollRoutine;
+
+        [Header("Attack")]
+        public bool isAttack = false;
+
+
         [Header("Cinemachine")]
         [Tooltip("카메라가 따라갈 Cinemachine 가상 카메라에서 설정한 추적 대상")]
         public GameObject CinemachineCameraTarget;
@@ -93,6 +111,8 @@ namespace GladiatorSurvival
         private int _animIDJump;
         private int _animIDFreeFall;
         private int _animIDMotionSpeed;
+        private int _animIDRoll;
+        private int _animIDAttack;
 
 #if ENABLE_INPUT_SYSTEM 
         private PlayerInput _playerInput;
@@ -155,6 +175,9 @@ namespace GladiatorSurvival
             JumpAndGravity();
             GroundedCheck();
             Move();
+            Roll();
+            Attack();
+            StateHandler();
         }
 
         private void LateUpdate()
@@ -169,7 +192,39 @@ namespace GladiatorSurvival
             _animIDJump = Animator.StringToHash("Jump");
             _animIDFreeFall = Animator.StringToHash("FreeFall");
             _animIDMotionSpeed = Animator.StringToHash("MotionSpeed");
+            _animIDRoll = Animator.StringToHash("Roll");
+            _animIDAttack = Animator.StringToHash("Attack");
         }
+        private void StateHandler()
+        {
+            if(!Grounded)
+            {
+                playerState = State.Air;
+            }
+            else if(isAttack)
+            {
+                playerState = State.Attack;
+            }
+            else if (isRoll)
+            {
+                playerState = State.Roll;
+            }
+            else if (_input.sprint && _input.move != Vector2.zero)
+            {
+                playerState = State.Splint;
+            }
+            else if(_input.move != Vector2.zero)
+            {
+                playerState = State.Walk;
+            }
+            else
+            {
+                playerState = State.Idle;
+            }
+
+           
+        }
+        
 
         private void GroundedCheck()
         {
@@ -209,6 +264,9 @@ namespace GladiatorSurvival
 
         private void Move()
         {
+            if (isRoll || playerState == State.Attack)
+                return;
+
             // set target speed based on move speed, sprint speed and if sprint is pressed
             float targetSpeed = _input.sprint ? SprintSpeed : MoveSpeed;
 
@@ -277,6 +335,9 @@ namespace GladiatorSurvival
 
         private void JumpAndGravity()
         {
+            if (isRoll || playerState == State.Attack)
+                return;
+
             if (Grounded)
             {
                 // reset the fall timeout timer
@@ -287,6 +348,7 @@ namespace GladiatorSurvival
                 {
                     _animator.SetBool(_animIDJump, false);
                     _animator.SetBool(_animIDFreeFall, false);
+                    isJump = false;
                 }
 
                 // stop our velocity dropping infinitely when grounded
@@ -301,11 +363,7 @@ namespace GladiatorSurvival
                     // the square root of H * -2 * G = how much velocity needed to reach desired height
                     _verticalVelocity = Mathf.Sqrt(JumpHeight * -2f * Gravity);
 
-                    // update animator if using character
-                    if (_hasAnimator)
-                    {
-                        _animator.SetBool(_animIDJump, true);
-                    }
+                    isJump = true;
                 }
 
                 // jump timeout
@@ -342,6 +400,122 @@ namespace GladiatorSurvival
             {
                 _verticalVelocity += Gravity * Time.deltaTime;
             }
+
+            if (isJump)
+            {
+                if (_hasAnimator)
+                {
+                    _animator.SetBool(_animIDJump, true);
+                }
+            }
+        }
+
+        private void Roll()
+        {
+            if (!Grounded || playerState == State.Attack)
+            {
+                _input.roll = false;
+                return;
+            }
+
+            if (_input.roll && _input.move != Vector2.zero)
+            {
+                if (isRoll)
+                {
+                    _input.roll = false;
+                    return; 
+                }
+
+                isRoll = true;
+
+                Vector3 inputDirection = new Vector3(_input.move.x, 0.0f, _input.move.y).normalized;
+                
+                float targetRotation = Mathf.Atan2(inputDirection.x, inputDirection.z) * Mathf.Rad2Deg +
+                                    _mainCamera.transform.eulerAngles.y;
+                float rotation = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetRotation, ref _rotationVelocity,
+                    RotationSmoothTime);
+
+                // rotate to face input direction relative to camera position
+                transform.rotation = Quaternion.Euler(0.0f, rotation, 0.0f);
+
+
+                Vector3 targetDirection = transform.position  + transform.forward * rollDistance;
+
+                _animator.SetTrigger(_animIDRoll);
+
+                if(rollRoutine != null)
+                {
+                    StopCoroutine(rollRoutine);
+                    rollRoutine = null; 
+                }
+
+                rollRoutine = Rolling(targetDirection);
+                StartCoroutine(rollRoutine);
+                
+            }
+            else
+            _input.roll = false;
+
+
+          
+        }
+
+        IEnumerator Rolling(Vector3 targetDirection)
+        {
+            int layerMask = 1 << LayerMask.NameToLayer("Player");
+            layerMask = ~layerMask;
+
+            while (true)
+            {
+                Vector3 back = transform.position + transform.forward * -0.8f;
+                Vector3 checkPos = new Vector3(back.x, back.y + 0.4f, back.z);
+                Debug.DrawRay(checkPos, transform.forward * 0.8f);
+
+                RaycastHit hit;
+                if (Physics.Raycast(checkPos, transform.forward, out hit, 1.3f, layerMask))
+                {
+                    Debug.Log("닿았다.");
+                    yield return null;
+                }
+                else
+                transform.position = Vector3.Lerp(transform.position, targetDirection, rollSpeed);
+                
+                yield return new WaitForFixedUpdate();
+            }
+            
+
+        }
+        // 애니메이션에서 이벤트로 호출
+        public void RollOver()
+        {
+            StopCoroutine(rollRoutine);
+            isRoll = false;
+        }
+
+        private void Attack()
+        {
+            if (isRoll || !Grounded)
+            {
+                _input.attack = false;
+                return;
+            }
+            if (_input.attack)
+            {
+                if (!isAttack)
+                {
+                    isAttack = true;
+                    _animator.SetTrigger(_animIDAttack);
+                    Debug.Log("공격");
+                }
+                _input.attack = false;
+            }
+            else
+                _input.attack = false;
+
+        }
+        public void AttackOver()
+        {
+            isAttack = false;
         }
 
         private static float ClampAngle(float lfAngle, float lfMin, float lfMax)

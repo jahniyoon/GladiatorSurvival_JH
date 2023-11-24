@@ -15,7 +15,7 @@ namespace GladiatorSurvival
     public class PlayerAttack : MonoBehaviour
     {
         PlayerInputs _input;
-
+        private Animator _animator;
 
 
 
@@ -37,7 +37,7 @@ namespace GladiatorSurvival
 
         void Update()
         {
-            Attack();
+            //Attack();
         }
 
         private void Attack()

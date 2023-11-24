@@ -691,6 +691,26 @@ PrefabInstance:
       propertyPath: m_Name
       value: Player
       objectReference: {fileID: 0}
+    - target: {fileID: 4779565184926476927, guid: 5ed3e0c8bcf740743bf83af5886a64d6,
+        type: 3}
+      propertyPath: isRoll
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4779565184926476927, guid: 5ed3e0c8bcf740743bf83af5886a64d6,
+        type: 3}
+      propertyPath: rollDelay
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 4779565184926476927, guid: 5ed3e0c8bcf740743bf83af5886a64d6,
+        type: 3}
+      propertyPath: rollSpeed
+      value: 0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4779565184926476927, guid: 5ed3e0c8bcf740743bf83af5886a64d6,
+        type: 3}
+      propertyPath: rollDistance
+      value: 5
+      objectReference: {fileID: 0}
     - target: {fileID: 6731762444400730083, guid: 5ed3e0c8bcf740743bf83af5886a64d6,
         type: 3}
       propertyPath: m_LocalPosition.x

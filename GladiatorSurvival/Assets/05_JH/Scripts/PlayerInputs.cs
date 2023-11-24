@@ -13,6 +13,7 @@ namespace GladiatorSurvival
         public bool jump;
         public bool sprint;
         public bool attack;
+        public bool roll;
 
         [Header("Movement Settings")]
         public bool analogMovement;
@@ -49,6 +50,10 @@ namespace GladiatorSurvival
         {
             AttackInput(value.isPressed);
         }
+        public void OnRoll(InputValue value)
+        {
+            RollInput(value.isPressed);
+        }
 #endif
 
 
@@ -76,7 +81,10 @@ namespace GladiatorSurvival
         {
             attack = newAttackState;
         }
-
+        public void RollInput(bool newRollState)
+        {
+            roll = newRollState;
+        }
         private void OnApplicationFocus(bool hasFocus)
         {
             SetCursorState(cursorLocked);
