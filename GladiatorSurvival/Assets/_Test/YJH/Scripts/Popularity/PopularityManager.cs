@@ -3,44 +3,94 @@ using System.Collections.Generic;
 using UnityEngine;
 using static UnityEditor.ShaderGraph.Internal.KeywordDependentCollection;
 
-public class PopularityManager : MonoBehaviour
+namespace JH
 {
-    #region ½Ì±ÛÅæ ÆĞÅÏ
-    public static PopularityManager Instance
+    public class PopularityManager : MonoBehaviour
     {
-        get
+        #region ì‹±ê¸€í†¤ íŒ¨í„´
+        public static PopularityManager Instance
         {
-            // ¸¸¾à ½Ì±ÛÅæ º¯¼ö¿¡ ¾ÆÁ÷ ¿ÀºêÁ§Æ®°¡ ÇÒ´çµÇÁö ¾Ê¾Ò´Ù¸é
-            if (m_Instance == null)
+            get
             {
-                // ¾À¿¡¼­ PopularityManager ¿ÀºêÁ§Æ®¸¦ Ã£¾Æ ÇÒ´ç
-                GameObject popularityManager = new GameObject("PopularityManager");
-                m_Instance = popularityManager.AddComponent<PopularityManager>();
+                // ë§Œì•½ ì‹±ê¸€í†¤ ë³€ìˆ˜ì— ì•„ì§ ì˜¤ë¸Œì íŠ¸ê°€ í• ë‹¹ë˜ì§€ ì•Šì•˜ë‹¤ë©´
+                if (m_Instance == null)
+                {
+                    // ì”¬ì—ì„œ PopularityManager ì˜¤ë¸Œì íŠ¸ë¥¼ ì°¾ì•„ í• ë‹¹
+                    GameObject popularityManager = new GameObject("PopularityManager");
+                    m_Instance = popularityManager.AddComponent<PopularityManager>();
+                }
+                // ì‹±ê¸€í†¤ ì˜¤ë¸Œì íŠ¸ë¥¼ ë°˜í™˜
+                return m_Instance;
             }
-            // ½Ì±ÛÅæ ¿ÀºêÁ§Æ®¸¦ ¹İÈ¯
-            return m_Instance;
         }
+        private static PopularityManager m_Instance; // ì‹±ê¸€í†¤ì´ í• ë‹¹ë  static ë³€ìˆ˜    
+        #endregion
+
+        [Header("Popularity")]
+        private int maxPopularity;   // ìµœëŒ€ ì¸ê¸°ë„
+        private int curPopularity;   // í˜„ì¬ ì¸ê¸°ë„
+
+        [Header("Buff")]
+        private float popularBuff;   // ë²„í”„
+        private float popularDebuff; // ë””ë²„í”„
+
+
+
+        #region ############################ ì¸ê¸°ë„ ê´€ë ¨ ì„¸íŒ… ############################
+
+        /// <summary> ì¸ê¸°ë„ ì„¸íŒ… </summary>
+        public void SetPopularity(int value)
+        {
+            curPopularity = value;
+        }
+
+        /// <summary> ë²„í”„ë¥˜ ì„¸íŒ… </summary>
+        /// <param name="buff">ì„¸íŒ…í•  ë²„í”„ ê°’</param>
+        /// <param name="debuff">ì„¸íŒ…í•  ë””ë²„í”„ ê°’</param>
+        public void SetPopularityBuff(float buff, float debuff)
+        {
+            popularBuff = buff;
+            popularDebuff = debuff;
+        }
+        #endregion
+
+
+        #region ############################# ì¸ê¸°ë„ ì¦ê°ì†Œ ############################
+
+        // ì¸ê¸°ë„ ì¦ê°€
+        public void PopularityIncrease(int value)
+        {
+            // ë²„í”„ëŠ” ë°˜ì˜¬ë¦¼
+            int newValue = value + Mathf.RoundToInt(value * (popularBuff / 100));
+
+            curPopularity += newValue;
+
+            // ì¸ê¸°ë„ê°€ ìµœëŒ€ë¥¼ ë„˜ê¸°ë©´ ìµœëŒ€ë¡œ ë³€ê²½
+            if (maxPopularity < curPopularity)
+            {
+                curPopularity = maxPopularity;
+            }
+        }
+
+        // ì¸ê¸°ë„ ê°ì†Œ
+        public void PopularityDecrease(int value)
+        {
+            // ë””ë²„í”„ëŠ” ë°˜ì˜¬ë¦¼
+            int newValue = value + Mathf.RoundToInt(value * (popularDebuff / 100));
+
+            curPopularity -= newValue;
+
+            // ì¸ê¸°ë„ê°€ ìµœëŒ€ë¥¼ ë„˜ê¸°ë©´ ìµœëŒ€ë¡œ ë³€ê²½
+            if (curPopularity < 0)
+            {
+                curPopularity = 0;
+            }
+        }
+
+        #endregion#
+        // ì¸ê¸°ë„ ê°ì†Œ ì¹´ìš´íŠ¸ ì‹œì‘
+
+        // ì¸ê¸°ë„ ê°ì†Œ ì¹´ìš´íŠ¸ ì¢…ë£Œ
+
     }
-    private static PopularityManager m_Instance; // ½Ì±ÛÅæÀÌ ÇÒ´çµÉ static º¯¼ö    
-    #endregion
-
-    [Header("Popularity")]
-    public int maxPopularity;   // ÃÖ´ë ÀÎ±âµµ
-    public int curPopularity;   // ÇöÀç ÀÎ±âµµ
-
-    [Header("Buff")]
-    public float popularBuff;   // ¹öÇÁ
-    public float popularDebuff; // µğ¹öÇÁ
-
-    // ÀÎ±âµµ ¼¼ÆÃ
-    public void SetPopularity(int value)
-    {
-        curPopularity = value;
-    }
-
-
-    // ÀÎ±âµµ °è½Â
-
-
-
 }
